@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archroma Supply Chain & Procurement Analytics Control Center</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (xlsx) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Google Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        html { scroll-behavior: smooth; }
+
+        /* 👉 PASTE YOUR @media print BLOCK RIGHT HERE */
+       @media print {
+            /* 1. Hide Sidebar, Print Buttons, Search, and Modals */
+            aside, button, #drilldown-modal, #table-search, .no-print {
+                display: none !important;
+            }
+
+            /* 2. Reset Page Container & Layout Locks */
+            body, html {
+                background-color: #ffffff !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            main {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 10px !important;
+                overflow: visible !important;
+                float: none !important;
+            }
+
+            /* 3. Force Grid Elements into Full Page Width */
+            .grid {
+                display: block !important;
+                width: 100% !important;
+            }
+
+            .grid > div, section {
+                width: 100% !important;
+                margin-bottom: 20px !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            /* 4. Fix Chart Canvases so right-side charts display cleanly */
+            canvas {
+                max-width: 100% !important;
+                width: 100% !important;
+                height: auto !important;
+            }
+
+            /* 5. Expand Scrollable Containers and Heatmap Table */
+            .overflow-x-auto, .max-h-96, .max-h-60, #heatmap-container {
+                max-height: none !important;
+                overflow: visible !important;
+                width: 100% !important;
+            }
+
+            table {
+                width: 100% !important;
+                page-break-inside: auto;
+            }
+
+            tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased flex h-screen overflow-hidden">
+
+    <!-- Sticky Side Navigation Bar -->
+    <aside class="w-64 bg-indigo-950 text-white flex flex-col shadow-xl z-20 flex-shrink-0">
+        <div class="p-5 border-b border-indigo-900 flex items-center space-x-3">
+            <svg class="w-7 h-7 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            <div>
+                <h1 class="text-sm font-bold tracking-wide">Archroma Analytics</h1>
+                <p class="text-[10px] text-indigo-300">Supply Chain Control Center</p>
+            </div>
+        </div>
+
+        <!-- Sidebar Content Area -->
+        <div class="p-4 overflow-y-auto flex-grow space-y-5 border-b border-indigo-900">
+            <!-- Global Filters -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center space-x-1">
+                        <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                        <span>Global Filters</span>
+                    </h2>
+                    <button onclick="resetFilters()" class="text-[10px] text-indigo-300 hover:text-white underline">Reset</button>
+                </div>
+
+                <!-- 1. Dyes / Chemical -->
+                <div class="relative filter-dropdown-container">
+                    <label class="block text-[11px] font-medium text-indigo-200 mb-1">1. Dyes / Chemical</label>
+                    <button type="button" onclick="toggleDropdown('dyeschem')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded-lg p-2 border flex justify-between items-center focus:ring-indigo-500">
+                        <span id="label-dyeschem" class="truncate">All</span>
+                        <svg class="w-3.5 h-3.5 text-indigo-300 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="dropdown-menu-dyeschem" class="hidden absolute left-0 right-0 mt-1 bg-indigo-950 border border-indigo-800 rounded-lg shadow-2xl z-30 p-2.5 space-y-2">
+                        <input type="text" id="search-dyeschem" placeholder="Search..." onkeyup="filterDropdownSearch('dyeschem')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded p-1.5 border focus:outline-none">
+                        <div class="flex justify-between text-[10px] text-indigo-300 px-1">
+                            <span onclick="setAllDropdown('dyeschem', true)" class="cursor-pointer hover:underline">Select All</span>
+                            <span onclick="setAllDropdown('dyeschem', false)" class="cursor-pointer hover:underline">Clear</span>
+                        </div>
+                        <div id="checkbox-group-dyeschem" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- 2. Plant Region -->
+                <div class="relative filter-dropdown-container">
+                    <label class="block text-[11px] font-medium text-indigo-200 mb-1">2. Plant Region</label>
+                    <button type="button" onclick="toggleDropdown('region')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded-lg p-2 border flex justify-between items-center focus:ring-indigo-500">
+                        <span id="label-region" class="truncate">All</span>
+                        <svg class="w-3.5 h-3.5 text-indigo-300 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="dropdown-menu-region" class="hidden absolute left-0 right-0 mt-1 bg-indigo-950 border border-indigo-800 rounded-lg shadow-2xl z-30 p-2.5 space-y-2">
+                        <input type="text" id="search-region" placeholder="Search..." onkeyup="filterDropdownSearch('region')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded p-1.5 border focus:outline-none">
+                        <div class="flex justify-between text-[10px] text-indigo-300 px-1">
+                            <span onclick="setAllDropdown('region', true)" class="cursor-pointer hover:underline">Select All</span>
+                            <span onclick="setAllDropdown('region', false)" class="cursor-pointer hover:underline">Clear</span>
+                        </div>
+                        <div id="checkbox-group-region" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- 3. Initiative Type -->
+                <div class="relative filter-dropdown-container">
+                    <label class="block text-[11px] font-medium text-indigo-200 mb-1">3. Initiative Type</label>
+                    <button type="button" onclick="toggleDropdown('initiative')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded-lg p-2 border flex justify-between items-center focus:ring-indigo-500">
+                        <span id="label-initiative" class="truncate">All</span>
+                        <svg class="w-3.5 h-3.5 text-indigo-300 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="dropdown-menu-initiative" class="hidden absolute left-0 right-0 mt-1 bg-indigo-950 border border-indigo-800 rounded-lg shadow-2xl z-30 p-2.5 space-y-2">
+                        <input type="text" id="search-initiative" placeholder="Search..." onkeyup="filterDropdownSearch('initiative')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded p-1.5 border focus:outline-none">
+                        <div class="flex justify-between text-[10px] text-indigo-300 px-1">
+                            <span onclick="setAllDropdown('initiative', true)" class="cursor-pointer hover:underline">Select All</span>
+                            <span onclick="setAllDropdown('initiative', false)" class="cursor-pointer hover:underline">Clear</span>
+                        </div>
+                        <div id="checkbox-group-initiative" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- 4. Sub Category -->
+                <div class="relative filter-dropdown-container">
+                    <label class="block text-[11px] font-medium text-indigo-200 mb-1">4. Sub Category</label>
+                    <button type="button" onclick="toggleDropdown('subcat')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded-lg p-2 border flex justify-between items-center focus:ring-indigo-500">
+                        <span id="label-subcat" class="truncate">All</span>
+                        <svg class="w-3.5 h-3.5 text-indigo-300 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="dropdown-menu-subcat" class="hidden absolute left-0 right-0 mt-1 bg-indigo-950 border border-indigo-800 rounded-lg shadow-2xl z-30 p-2.5 space-y-2">
+                        <input type="text" id="search-subcat" placeholder="Search..." onkeyup="filterDropdownSearch('subcat')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded p-1.5 border focus:outline-none">
+                        <div class="flex justify-between text-[10px] text-indigo-300 px-1">
+                            <span onclick="setAllDropdown('subcat', true)" class="cursor-pointer hover:underline">Select All</span>
+                            <span onclick="setAllDropdown('subcat', false)" class="cursor-pointer hover:underline">Clear</span>
+                        </div>
+                        <div id="checkbox-group-subcat" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- 5. Plant Manager -->
+                <div class="relative filter-dropdown-container">
+                    <label class="block text-[11px] font-medium text-indigo-200 mb-1">5. Plant Manager</label>
+                    <button type="button" onclick="toggleDropdown('manager')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded-lg p-2 border flex justify-between items-center focus:ring-indigo-500">
+                        <span id="label-manager" class="truncate">All</span>
+                        <svg class="w-3.5 h-3.5 text-indigo-300 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="dropdown-menu-manager" class="hidden absolute left-0 right-0 mt-1 bg-indigo-950 border border-indigo-800 rounded-lg shadow-2xl z-30 p-2.5 space-y-2">
+                        <input type="text" id="search-manager" placeholder="Search..." onkeyup="filterDropdownSearch('manager')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded p-1.5 border focus:outline-none">
+                        <div class="flex justify-between text-[10px] text-indigo-300 px-1">
+                            <span onclick="setAllDropdown('manager', true)" class="cursor-pointer hover:underline">Select All</span>
+                            <span onclick="setAllDropdown('manager', false)" class="cursor-pointer hover:underline">Clear</span>
+                        </div>
+                        <div id="checkbox-group-manager" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- 6. Plant -->
+                <div class="relative filter-dropdown-container">
+                    <label class="block text-[11px] font-medium text-indigo-200 mb-1">6. Plant</label>
+                    <button type="button" onclick="toggleDropdown('plant')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded-lg p-2 border flex justify-between items-center focus:ring-indigo-500">
+                        <span id="label-plant" class="truncate">All</span>
+                        <svg class="w-3.5 h-3.5 text-indigo-300 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="dropdown-menu-plant" class="hidden absolute left-0 right-0 mt-1 bg-indigo-950 border border-indigo-800 rounded-lg shadow-2xl z-30 p-2.5 space-y-2">
+                        <input type="text" id="search-plant" placeholder="Search..." onkeyup="filterDropdownSearch('plant')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded p-1.5 border focus:outline-none">
+                        <div class="flex justify-between text-[10px] text-indigo-300 px-1">
+                            <span onclick="setAllDropdown('plant', true)" class="cursor-pointer hover:underline">Select All</span>
+                            <span onclick="setAllDropdown('plant', false)" class="cursor-pointer hover:underline">Clear</span>
+                        </div>
+                        <div id="checkbox-group-plant" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- 7. Plant Code -->
+                <div class="relative filter-dropdown-container">
+                    <label class="block text-[11px] font-medium text-indigo-200 mb-1">7. Plant Code</label>
+                    <button type="button" onclick="toggleDropdown('plantcode')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded-lg p-2 border flex justify-between items-center focus:ring-indigo-500">
+                        <span id="label-plantcode" class="truncate">All</span>
+                        <svg class="w-3.5 h-3.5 text-indigo-300 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="dropdown-menu-plantcode" class="hidden absolute left-0 right-0 mt-1 bg-indigo-950 border border-indigo-800 rounded-lg shadow-2xl z-30 p-2.5 space-y-2">
+                        <input type="text" id="search-plantcode" placeholder="Search..." onkeyup="filterDropdownSearch('plantcode')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded p-1.5 border focus:outline-none">
+                        <div class="flex justify-between text-[10px] text-indigo-300 px-1">
+                            <span onclick="setAllDropdown('plantcode', true)" class="cursor-pointer hover:underline">Select All</span>
+                            <span onclick="setAllDropdown('plantcode', false)" class="cursor-pointer hover:underline">Clear</span>
+                        </div>
+                        <div id="checkbox-group-plantcode" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- 8. Material Name -->
+                <div class="relative filter-dropdown-container">
+                    <label class="block text-[11px] font-medium text-indigo-200 mb-1">8. Material Name</label>
+                    <button type="button" onclick="toggleDropdown('material')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded-lg p-2 border flex justify-between items-center focus:ring-indigo-500">
+                        <span id="label-material" class="truncate">All</span>
+                        <svg class="w-3.5 h-3.5 text-indigo-300 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="dropdown-menu-material" class="hidden absolute left-0 right-0 mt-1 bg-indigo-950 border border-indigo-800 rounded-lg shadow-2xl z-30 p-2.5 space-y-2">
+                        <input type="text" id="search-material" placeholder="Search..." onkeyup="filterDropdownSearch('material')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded p-1.5 border focus:outline-none">
+                        <div class="flex justify-between text-[10px] text-indigo-300 px-1">
+                            <span onclick="setAllDropdown('material', true)" class="cursor-pointer hover:underline">Select All</span>
+                            <span onclick="setAllDropdown('material', false)" class="cursor-pointer hover:underline">Clear</span>
+                        </div>
+                        <div id="checkbox-group-material" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- 9. Material Code -->
+                <div class="relative filter-dropdown-container">
+                    <label class="block text-[11px] font-medium text-indigo-200 mb-1">9. Material Code</label>
+                    <button type="button" onclick="toggleDropdown('matcode')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded-lg p-2 border flex justify-between items-center focus:ring-indigo-500">
+                        <span id="label-matcode" class="truncate">All</span>
+                        <svg class="w-3.5 h-3.5 text-indigo-300 flex-shrink-0 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="dropdown-menu-matcode" class="hidden absolute left-0 right-0 mt-1 bg-indigo-950 border border-indigo-800 rounded-lg shadow-2xl z-30 p-2.5 space-y-2">
+                        <input type="text" id="search-matcode" placeholder="Search..." onkeyup="filterDropdownSearch('matcode')" class="w-full text-xs bg-indigo-900 text-white border-indigo-800 rounded p-1.5 border focus:outline-none">
+                        <div class="flex justify-between text-[10px] text-indigo-300 px-1">
+                            <span onclick="setAllDropdown('matcode', true)" class="cursor-pointer hover:underline">Select All</span>
+                            <span onclick="setAllDropdown('matcode', false)" class="cursor-pointer hover:underline">Clear</span>
+                        </div>
+                        <div id="checkbox-group-matcode" class="max-h-36 overflow-y-auto space-y-1 text-xs pr-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Section Navigation Menu -->
+            <div class="pt-3 border-t border-indigo-900 space-y-2">
+                <label class="block text-[11px] font-bold text-indigo-300 uppercase tracking-wider">Quick Page Navigation</label>
+                <div class="space-y-1">
+                    <button onclick="scrollToSection('sec-kpis')" class="w-full text-left text-xs bg-indigo-900/50 hover:bg-indigo-800 text-indigo-200 px-2.5 py-1.5 rounded transition flex items-center space-x-2">
+                        <span>📊</span><span>Executive KPI Summary</span>
+                    </button>
+                    <button onclick="scrollToSection('sec-charts')" class="w-full text-left text-xs bg-indigo-900/50 hover:bg-indigo-800 text-indigo-200 px-2.5 py-1.5 rounded transition flex items-center space-x-2">
+                        <span>📈</span><span>Analytics Charts</span>
+                    </button>
+                    <button onclick="scrollToSection('sec-heatmap')" class="w-full text-left text-xs bg-indigo-900/50 hover:bg-indigo-800 text-indigo-200 px-2.5 py-1.5 rounded transition flex items-center space-x-2">
+                        <span>🔥</span><span>ROI Efficiency Heatmap</span>
+                    </button>
+                    <button onclick="scrollToSection('sec-table')" class="w-full text-left text-xs bg-indigo-900/50 hover:bg-indigo-800 text-indigo-200 px-2.5 py-1.5 rounded transition flex items-center space-x-2">
+                        <span>📋</span><span>Data Registry Table</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Footer Action -->
+        <div class="p-4 border-t border-indigo-900 space-y-2">
+            <label for="excel-upload" class="cursor-pointer bg-indigo-700 hover:bg-indigo-600 text-xs font-semibold px-3 py-2 rounded-lg shadow transition flex items-center justify-center space-x-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span>Upload New Excel</span>
+            </label>
+            <input id="excel-upload" type="file" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+            <button onclick="exportDataCSV()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-xs font-semibold px-3 py-2 rounded-lg shadow transition flex items-center justify-center space-x-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <span>Export Filtered Data (CSV)</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main id="main-scroll-container" class="flex-1 overflow-y-auto p-6 space-y-6">
+
+        <!-- Header Bar -->
+        <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+            <div>
+                <h2 class="text-lg font-bold text-gray-900">Procurement & Supply Chain Performance</h2>
+                <p class="text-xs text-gray-500">Live analytical insights, savings tracking, and ROI risk monitoring.</p>
+            </div>
+            <button onclick="window.print()" class="bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-700 px-3 py-2 rounded-lg transition flex items-center space-x-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <span>Print / Save PDF</span>
+            </button>
+        </div>
+
+        <!-- Local Executive Insights Banner -->
+        <div id="insights-banner" class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 shadow-sm">
+            <div class="flex items-center space-x-2 mb-1">
+                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-amber-900">Automated Risk & Efficiency Scanner</h3>
+            </div>
+            <p id="insights-text" class="text-xs text-amber-800 leading-relaxed">Analyzing dataset metrics...</p>
+        </div>
+
+        <!-- Section 1: Executive KPI Scorecards -->
+        <section id="sec-kpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div onclick="openModal('kpi_spend')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between cursor-pointer hover:border-indigo-500 hover:shadow transition group">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total YTD Spend 🔍</span>
+                    <span class="text-gray-400 group-hover:text-indigo-600">ℹ️</span>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between">
+                    <span id="kpi-spend" class="text-2xl font-bold text-indigo-900">$0.00</span>
+                    <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">USD</span>
+                </div>
+            </div>
+            <div onclick="openModal('kpi_qty')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between cursor-pointer hover:border-indigo-500 hover:shadow transition group">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total PO Quantity 🔍</span>
+                    <span class="text-gray-400 group-hover:text-indigo-600">ℹ️</span>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between">
+                    <span id="kpi-qty" class="text-2xl font-bold text-indigo-900">0</span>
+                    <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Kgs</span>
+                </div>
+            </div>
+            <div onclick="openModal('kpi_savings')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between cursor-pointer hover:border-indigo-500 hover:shadow transition group">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Projected Savings 🔍</span>
+                    <span class="text-gray-400 group-hover:text-indigo-600">ℹ️</span>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between">
+                    <span id="kpi-savings" class="text-2xl font-bold text-emerald-700">$0.00</span>
+                    <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Total</span>
+                </div>
+            </div>
+            <div onclick="openModal('kpi_items')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between cursor-pointer hover:border-indigo-500 hover:shadow transition group">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Active Line Items 🔍</span>
+                    <span class="text-gray-400 group-hover:text-indigo-600">ℹ️</span>
+                </div>
+                <div class="mt-2 flex items-baseline justify-between">
+                    <span id="kpi-items" class="text-2xl font-bold text-indigo-900">0</span>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Records</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Analytics Charts Grid -->
+        <section id="sec-charts" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div onclick="openModal('chartSubCat')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:border-indigo-500 hover:shadow transition">
+                <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center justify-between">
+                    <span>Spend by Sub Category 🔍</span>
+                    <span class="text-xs text-gray-400 font-normal">USD</span>
+                </h3>
+                <div class="relative h-72"><canvas id="chartSubCat"></canvas></div>
+            </div>
+            <!-- Real Geographical World Map View -->
+            <div onclick="openModal('sec-map')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:border-indigo-500 hover:shadow transition flex flex-col justify-between group">
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-800 flex items-center space-x-1.5">
+                            <span>🗺️</span>
+                            <span>Global Geographical Regional Spend Map 🔍</span>
+                        </h3>
+                        <p class="text-[11px] text-gray-500">Spend breakdown mapped across real geographic coordinates.</p>
+                    </div>
+                    <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Live Regional View</span>
+                </div>
+                <!-- Real World Map Canvas / Image Background Container -->
+                <div class="relative w-full h-64 bg-slate-900 rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg" class="absolute inset-0 w-full h-full object-contain opacity-25 filter invert" alt="World Map">
+                    <svg viewBox="0 0 1000 500" class="absolute inset-0 w-full h-full">
+                        <g id="map-nodes"></g>
+                    </svg>
+                </div>
+                <!-- Regional Legend Grid -->
+                <div id="map-legend" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-3 text-[10px]">
+                    <!-- Dynamic Legend Cards -->
+                </div>
+            </div>
+            <div onclick="openModal('chartTopMaterials')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:border-indigo-500 hover:shadow transition">
+                <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center justify-between">
+                    <span>Top Materials by Spend 🔍</span>
+                    <span class="text-xs text-gray-400 font-normal">USD</span>
+                </h3>
+                <div class="relative h-72"><canvas id="chartTopMaterials"></canvas></div>
+            </div>
+            <!-- Monthly Spend Trend Chart -->
+            <div onclick="openModal('chartMonthlySpend')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:border-indigo-500 hover:shadow transition">
+                <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center justify-between">
+                    <span>Monthly Spend & Volume Trend 🔍</span>
+                    <span class="text-xs text-gray-400 font-normal">USD / Qty</span>
+                </h3>
+                <div class="relative h-72"><canvas id="chartMonthlySpend"></canvas></div>
+            </div>
+            <!-- <div onclick="openModal('chartBubbleMatrix')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:border-indigo-500 hover:shadow transition">
+                <h3 class="text-sm font-bold text-gray-800 mb-4 flex items-center justify-between">
+                    <span>Sub Category vs Initiative Type (Bubble) 🔍</span>
+                    <span class="text-xs text-gray-400 font-normal">Savings vs Spend</span>
+                </h3>
+                <div class="relative h-72"><canvas id="chartBubbleMatrix"></canvas></div>
+            </div> -->
+        </section>
+
+        <!-- Section 3: Savings Efficiency & Risk Heatmap -->
+        <section id="sec-heatmap" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:border-indigo-500 hover:shadow transition" onclick="openModal('sec-heatmap')">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-800">🔥 Savings Efficiency & ROI Heatmap</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">Initiative Type ($Y$-Axis) vs. Sub Category ($X$-Axis). Darker emerald green cells indicate higher ROI efficiency (Averaged Row Savings/Spend Ratio).</p>
+                </div>
+                <!-- Simple & Effective Click Prompt -->
+                <div class="mt-2 sm:mt-0 flex items-center space-x-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 shadow-sm">
+                    <span class="animate-pulse">👉</span>
+                    <span>Click heatmap for detailed breakdown</span>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 text-[11px] text-gray-500 mb-3">
+                <span class="flex items-center"><span class="w-3 h-3 bg-purple-200 rounded mr-1"></span> Low Spend (Purple)</span>
+                <span class="flex items-center"><span class="w-3 h-3 bg-purple-700 rounded mr-1"></span> High Spend (Purple)</span>
+                <span class="flex items-center"><span class="w-3 h-3 bg-emerald-200 rounded mr-1"></span> Low Savings % (Green)</span>
+                <span class="flex items-center"><span class="w-3 h-3 bg-emerald-600 rounded mr-1"></span> High Savings % (Green)</span>
+            </div>
+            <div id="heatmap-container" class="overflow-x-auto mt-2">
+                <!-- Dynamically rendered heatmap grid -->
+            </div>
+        </section>
+
+        <!-- Section 4: Data Table Section -->
+        <section id="sec-table" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+                <h3 class="text-sm font-bold text-gray-800">Filtered Master Data Registry</h3>
+                <input type="text" id="table-search" placeholder="Search records..." onkeyup="filterTable()" class="text-xs border border-gray-300 rounded-lg px-3 py-2 w-full sm:w-64 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div class="overflow-x-auto max-h-96 border border-gray-100 rounded-lg">
+                <table id="data-table" class="min-w-full divide-y divide-gray-200 text-xs">
+                    <thead class="bg-gray-50 sticky top-0"><tr id="table-head"></tr></thead>
+                    <tbody id="data-body" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Context-Aware Drill-Down Pop-Up Modal -->
+    <div id="drilldown-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden" onclick="handleModalBackdropClick(event)">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden" onclick="event.stopPropagation()">
+            <!-- Modal Header -->
+            <div class="bg-indigo-900 text-white px-6 py-4 flex items-center justify-between">
+                <div>
+                    <span id="modal-category" class="text-[10px] uppercase tracking-wider bg-indigo-700 px-2 py-0.5 rounded font-semibold">Context-Aware Drill Down</span>
+                    <h3 id="modal-title" class="text-base font-bold mt-1">Visual Breakdown</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="closeModal()" class="p-2 bg-indigo-800 hover:bg-indigo-700 rounded-lg transition" title="Close (ESC)">✕</button>
+                </div>
+            </div>
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto space-y-6 flex-grow">
+                <div id="modalChartWrapper" class="relative h-80 bg-gray-50 rounded-xl p-4 border border-gray-200 flex items-center justify-center">
+                    <canvas id="modalChartCanvas"></canvas>
+                </div>
+                <div>
+                    <h4 id="modal-table-title" class="text-xs font-bold text-gray-700 uppercase mb-2">Filtered Summary Data</h4>
+                    <div class="overflow-x-auto max-h-60 border border-gray-200 rounded-lg text-xs">
+                        <table id="modal-data-table" class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0"><tr id="modal-table-head"></tr></thead>
+                            <tbody id="modal-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let rawData = []; // Starts empty, populated by Python backend
+        let charts = {};
+        let currentFilteredData = [];
+
+        // Fetch data from FastAPI when the page loads
+        async function initDashboard() {
+            try {
+                const response = await fetch('/api/data');
+                rawData = await response.json();
+            } catch (error) {
+                console.error("Error loading backend data:", error);
+            }
+
+            updateFilterCheckboxes();
+            applyFilters();
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.filter-dropdown-container')) {
+                    document.querySelectorAll('[id^="dropdown-menu-"]').forEach(m => m.classList.add('hidden'));
+                }
+            });
+        }
+
+        window.onload = initDashboard;
+    </script>
+    
+</body>
+</html>
